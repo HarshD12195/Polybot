@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PolyBot Pro | Paper-Live Analytics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: #07090f;
+            background-image:
+                radial-gradient(at 0% 0%, rgba(31, 41, 55, 0.4) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(59, 130, 246, 0.08) 0px, transparent 50%);
+            min-height: 100vh;
+            color: #e5e7eb;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+        }
+
+        .glass-dark {
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .text-neon-green {
+            color: #10b981;
+        }
+
+        .text-neon-pink {
+            color: #f43f5e;
+        }
+
+        .bg-neon-green {
+            background-color: #10b981;
+        }
+
+        .tab-active {
+            background: rgba(59, 130, 246, 0.1);
+            border-bottom: 3px solid #3b82f6;
+            color: #3b82f6;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #1f2937;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+
+<body class="p-4 lg:p-10">
+    <div class="max-w-[1600px] mx-auto">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+            <div>
+                <div class="flex items-center gap-3">
+                    <div
+                        class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20 text-lg tracking-tighter">
+                        PB</div>
+                    <h1 class="text-3xl font-bold tracking-tight text-white uppercase">PolyBot <span
+                            class="text-blue-500 font-black">Pro</span></h1>
+                </div>
+                <div class="flex items-center gap-3 mt-1">
+                    <p class="text-gray-500 text-sm font-medium tracking-wide">Refined Proportional Copy-Trading</p>
+                    <span
+                        class="bg-blue-500/10 text-blue-400 text-[10px] font-black px-2 py-0.5 rounded border border-blue-500/20 uppercase tracking-widest">
+                        MODE: TEST PAPER • VIRTUAL $100 ACCOUNT • REAL WALLET DISCONNECTED
+                    </span>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div class="glass px-4 py-2 flex items-center gap-2 border-neon-green/30">
+                    <div class="w-2 h-2 rounded-full bg-neon-green animate-pulse"></div>
+                    <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Live Gamma Feed</span>
+                </div>
+                <button onclick="window.location.reload()"
+                    class="glass p-2 hover:bg-white/5 transition-all text-gray-400 hover:text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <div class="glass p-7 border-transparent transition-all">
+                <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">PAPER TEST EQUITY (Start:
+                    $100)</p>
+                <div class="flex items-baseline gap-2">
+                    <h2 id="val-total" class="text-4xl font-black tracking-tighter">$100.00</h2>
+                    <span id="roi-pct" class="text-xs font-bold text-neon-green">+0.00%</span>
+                </div>
+                <p class="text-[10px] text-gray-500 font-medium mt-1">Virtual Mark-to-Market</p>
+            </div>
+
+            <div class="glass p-7 border-transparent transition-all">
+                <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">USDC Cash</p>
+                <h2 id="val-cash" class="text-4xl font-black tracking-tighter">$100.00</h2>
+                <p class="text-[10px] text-gray-500 font-medium mt-1">Available to Risk</p>
+            </div>
+
+            <div class="glass p-7 border-transparent transition-all">
+                <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Realized PnL</p>
+                <h2 id="val-pnl" class="text-4xl font-black tracking-tighter text-neon-green">+$0.00</h2>
+                <p class="text-[10px] text-gray-500 font-medium mt-1">Audit Log Profit</p>
+            </div>
+
+            <div class="glass p-7 border-transparent transition-all">
+                <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Max Drawdown</p>
+                <h2 id="val-drawdown" class="text-4xl font-black tracking-tighter text-neon-pink">$0.00</h2>
+                <p class="text-[10px] text-gray-500 font-medium mt-1">Portfolio Risk Check</p>
+            </div>
+        </div>
+
+        <!-- Main Analytics Area -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-10">
+            <!-- Chart Card -->
+            <div class="xl:col-span-2 glass p-8">
+                <div class="flex justify-between items-center mb-8">
+                    <div>
+                        <h3 class="text-xl font-bold tracking-tight text-white uppercase">Wealth Compounding</h3>
+                        <p id="chart-subtitle" class="text-gray-500 text-xs mt-0.5 tracking-wider font-medium">Equity
+                            Curve: $100.00 → $100.00</p>
+                    </div>
+                </div>
+                <div class="h-[400px] w-full">
+                    <canvas id="compoundingChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Whale Feed -->
+            <div class="glass p-8 flex flex-col">
+                <div class="flex justify-between items-center mb-8">
+                    <div>
+                        <h3 class="text-xl font-bold tracking-tight text-white uppercase">Whale Monitoring</h3>
+                        <p class="text-gray-500 text-xs mt-0.5 tracking-wider font-medium">Real-time Copy Activity</p>
+                    </div>
+                </div>
+                <div id="whale-feed" class="space-y-4 overflow-y-auto pr-2 max-h-[400px]">
+                    <div
+                        class="glass-dark p-4 rounded-xl text-center text-gray-600 text-xs font-bold uppercase tracking-widest py-20">
+                        Scanning Datalog...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Tables Area -->
+        <div class="grid grid-cols-1 gap-10">
+            <!-- Navigation -->
+            <div class="flex gap-4 p-1.5 glass-dark w-fit rounded-xl mb-2">
+                <button onclick="setTab('trades')" id="tab-trades"
+                    class="px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all tab-active">Trade
+                    Log</button>
+                <button onclick="setTab('positions')" id="tab-positions"
+                    class="px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all">Open
+                    Positions</button>
+            </div>
+
+            <!-- Content Area -->
+            <div id="content-trades" class="glass overflow-hidden">
+                <table class="w-full text-left">
+                    <thead
+                        class="bg-white/5 text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 border-b border-white/5">
+                        <tr>
+                            <th class="px-8 py-5">Time</th>
+                            <th class="px-8 py-5">Wallet</th>
+                            <th class="px-8 py-5">Market</th>
+                            <th class="px-8 py-5">Side</th>
+                            <th class="px-8 py-5">Size</th>
+                            <th class="px-8 py-5">Price</th>
+                            <th class="px-8 py-5">Bot % Of Whale</th>
+                            <th class="px-8 py-5">Realized PnL</th>
+                            <th class="px-8 py-5 text-right">Equity After</th>
+                        </tr>
+                    </thead>
+                    <tbody id="body-trades" class="divide-y divide-white/[0.03] text-sm font-medium">
+                        <!-- Injection -->
+                    </tbody>
+                </table>
+                <div id="empty-trades"
+                    class="hidden py-32 text-center text-gray-600 font-bold uppercase tracking-widest">Awaiting strategy
+                    execution...</div>
+            </div>
+
+            <div id="content-positions" class="hidden glass overflow-hidden">
+                <table class="w-full text-left">
+                    <thead
+                        class="bg-white/5 text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 border-b border-white/5">
+                        <tr>
+                            <th class="px-8 py-5">Market ID</th>
+                            <th class="px-8 py-5">Quantity</th>
+                            <th class="px-8 py-5">Entry Price</th>
+                            <th class="px-8 py-5">Unrealized PnL</th>
+                            <th class="px-8 py-5 text-right">Market Value</th>
+                        </tr>
+                    </thead>
+                    <tbody id="body-positions" class="divide-y divide-white/[0.03] text-sm font-medium text-gray-300">
+                        <!-- Injection -->
+                    </tbody>
+                </table>
+                <div id="empty-positions"
+                    class="hidden py-32 text-center text-gray-600 font-bold uppercase tracking-widest">Inventory
+                    delta-neutral</div>
+            </div>
+        </div>
+
+        <footer
+            class="mt-20 py-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-gray-600 gap-6">
+            <div>© 2026 Polymarket Copy-Trading Bot</div>
+            <div class="flex gap-8">
+                <span class="text-blue-500/50">STATUS: HEALTHY</span>
+                <span>MODE: TEST PAPER 100$</span>
+                <span>AUDIT: ACTIVE</span>
+                <span class="text-neon-pink">REAL WALLET DISCONNECTED</span>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const API = "";
+        let chart = null;
+        let currentTab = 'trades';
+
+        function setTab(tab) {
+            currentTab = tab;
+            document.getElementById('content-trades').classList.toggle('hidden', tab !== 'trades');
+            document.getElementById('content-positions').classList.toggle('hidden', tab !== 'positions');
+            document.getElementById('tab-trades').classList.toggle('tab-active', tab === 'trades');
+            document.getElementById('tab-positions').classList.toggle('tab-active', tab === 'positions');
+            syncData();
+        }
+
+        async function syncData() {
+            try {
+                // 1. Stats
+                const statsRes = await fetch(`${API}/api/portfolio/stats`);
+                const stats = await statsRes.json();
+
+                const total = parseFloat(stats.total_value || 100);
+                document.getElementById('val-total').innerText = `$${total.toFixed(2)}`;
+                document.getElementById('val-cash').innerText = `$${parseFloat(stats.cash || 100).toFixed(2)}`;
+
+                const roi = (stats.roi || 0) * 100;
+                const roiElem = document.getElementById('roi-pct');
+                roiElem.innerText = `${roi >= 0 ? '+' : ''}${roi.toFixed(2)}%`;
+                roiElem.className = `text-xs font-bold ${roi >= 0 ? 'text-neon-green' : 'text-neon-pink'}`;
+
+                const pnl = parseFloat(stats.realized_pnl || 0);
+                const pnlElem = document.getElementById('val-pnl');
+                pnlElem.innerText = `${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`;
+                pnlElem.className = `text-4xl font-black tracking-tighter ${pnl >= 0 ? 'text-neon-green' : 'text-neon-pink'}`;
+
+                document.getElementById('val-drawdown').innerText = `$${parseFloat(stats.drawdown || 0).toFixed(2)}`;
+                document.getElementById('chart-subtitle').innerText = `Equity Curve: $100.00 → $${total.toFixed(2)}`;
+
+                // 2. Positions
+                const posRes = await fetch(`${API}/api/portfolio/positions`);
+                const posState = await posRes.json();
+                const positions = posState.positions || [];
+                const posBody = document.getElementById('body-positions');
+
+                if (positions.length === 0) {
+                    posBody.innerHTML = '';
+                    document.getElementById('empty-positions').classList.remove('hidden');
+                } else {
+                    document.getElementById('empty-positions').classList.add('hidden');
+                    posBody.innerHTML = positions.map(p => `
+                        <tr class="hover:bg-white/[0.02]">
+                            <td class="px-8 py-5 font-mono text-xs text-blue-400 font-bold">${p.market_id}</td>
+                            <td class="px-8 py-5 font-black">${parseFloat(p.quantity).toFixed(2)}</td>
+                            <td class="px-8 py-5 text-gray-500 font-mono text-xs">$${parseFloat(p.avg_price).toFixed(3)}</td>
+                            <td class="px-8 py-5 font-bold ${p.unrealized_pnl >= 0 ? 'text-neon-green' : 'text-neon-pink'}">$${parseFloat(p.unrealized_pnl).toFixed(2)}</td>
+                            <td class="px-8 py-5 text-right font-black text-white">$${(p.quantity * (p.mark_price || p.avg_price)).toFixed(2)}</td>
+                        </tr>
+                    `).join('');
+                }
+
+                // 3. Trades
+                const tradesRes = await fetch(`${API}/api/trades`);
+                const trades = await tradesRes.json();
+                const tradesBody = document.getElementById('body-trades');
+
+                if (trades.length === 0) {
+                    tradesBody.innerHTML = '';
+                    document.getElementById('empty-trades').classList.remove('hidden');
+                } else {
+                    document.getElementById('empty-trades').classList.add('hidden');
+                    tradesBody.innerHTML = trades.map(t => {
+                        const date = new Date(t.timestamp);
+                        const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                        const actionClass = t.side === 'BUY' ? 'text-neon-green' : 'text-neon-pink';
+                        const pct = (parseFloat(t.bot_size_pct_of_target || 0) * 100).toFixed(3);
+                        return `
+                        <tr class="hover:bg-white/[0.01]">
+                            <td class="px-8 py-5 text-[10px] font-black text-gray-500 uppercase">${time}</td>
+                            <td class="px-8 py-5 font-mono text-[10px] text-blue-500">${t.target_wallet.slice(0, 10)}...</td>
+                            <td class="px-8 py-5">
+                                <span class="font-bold text-gray-200 text-xs">${t.market_id.slice(0, 20)}...</span>
+                            </td>
+                            <td class="px-8 py-5">
+                                <span class="${actionClass} font-black text-[10px] uppercase tracking-tighter">${t.side}</span>
+                            </td>
+                            <td class="px-8 py-5 font-black text-white italic">${parseFloat(t.size_shares).toFixed(2)}</td>
+                            <td class="px-8 py-5 font-mono text-xs text-gray-400">$${parseFloat(t.price).toFixed(4)}</td>
+                            <td class="px-8 py-5 font-bold text-blue-400">${pct}%</td>
+                            <td class="px-8 py-5 font-bold ${parseFloat(t.realized_pnl_usd) >= 0 ? 'text-neon-green' : 'text-neon-pink'}">$${parseFloat(t.realized_pnl_usd || 0).toFixed(2)}</td>
+                            <td class="px-8 py-5 text-right font-black text-gray-100">$${parseFloat(t.equity_after).toFixed(2)}</td>
+                        </tr>
+                        `;
+                    }).join('');
+
+                    // Update detections feed
+                    if (trades.length > 0) {
+                        const last = trades[0];
+                        const feed = document.getElementById('whale-feed');
+                        const time = new Date(last.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const pct = (parseFloat(last.bot_size_pct_of_target || 0) * 100).toFixed(2);
+                        const row = `
+                            <div class="glass-dark p-4 rounded-xl border-l-4 ${last.side === 'BUY' ? 'border-neon-green' : 'border-neon-pink'} animate-in slide-in-from-right-10 duration-500">
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="text-[10px] font-black text-gray-500 uppercase">${time}</span>
+                                    <span class="text-[8px] font-black bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded tracking-tighter">SPEC 100 COPY</span>
+                                </div>
+                                <h4 class="text-[10px] font-bold text-white mb-2 leading-tight">${last.market_id}</h4>
+                                <div class="flex justify-between items-end border-t border-white/5 pt-2">
+                                    <div class="text-[9px] font-medium text-gray-500">
+                                        Target Notional: $${parseFloat(last.target_notional_usd).toFixed(2)}<br>
+                                        Bot Cost: <span class="text-white font-bold">$${parseFloat(last.bot_notional_usd).toFixed(2)}</span> (${pct}%)
+                                    </div>
+                                    <span class="${last.side === 'BUY' ? 'text-neon-green' : 'text-neon-pink'} font-black text-xs italic">SIMULATED ${last.side}</span>
+                                </div>
+                            </div>
+                        `;
+                        if (feed.innerHTML.includes('Scanning')) feed.innerHTML = '';
+                        if (!feed.innerHTML.includes(last.timestamp)) {
+                            feed.insertAdjacentHTML('afterbegin', row);
+                            if (feed.children.length > 5) feed.lastElementChild.remove();
+                        }
+                    }
+                }
+
+                // 4. Chart
+                const histRes = await fetch(`${API}/api/portfolio/history`);
+                const history = await histRes.json();
+                updateChart(history);
+
+            } catch (err) { console.error(err); }
+        }
+
+        function updateChart(history) {
+            const data = history.slice(-100);
+            const labels = data.map(h => new Date(h.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+            const values = data.map(h => h.value);
+
+            if (!chart) {
+                const ctx = document.getElementById('compoundingChart').getContext('2d');
+                chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [{
+                            data: values,
+                            borderColor: '#3b82f6',
+                            borderWidth: 3,
+                            fill: true,
+                            backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                            tension: 0.4,
+                            pointRadius: 2,
+                            pointBackgroundColor: '#3b82f6'
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { color: '#4b5563', font: { size: 9 } } },
+                            y: { grid: { color: 'rgba(255,255,255,0.02)' }, ticks: { color: '#4b5563', font: { size: 9 } } }
+                        }
+                    }
+                });
+            } else {
+                chart.data.labels = labels;
+                chart.data.datasets[0].data = values;
+                chart.update('none');
+            }
+        }
+
+        setInterval(syncData, 5000);
+        syncData();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "polymarket-bot"
+version = "0.1.0"
+description = "Production-grade Polymarket copy-trading bot"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic-settings>=2.1.0",
+    "sqlalchemy[asyncio]>=2.0.25",
+    "asyncpg>=0.29.0",
+    "aiosqlite>=0.19.0",
+    "httpx>=0.26.0",
+    "websockets>=12.0",
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "typer>=0.9.0",
+    "eth-account>=0.10.0",
+    "web3>=6.15.1",
+    "py-clob-client",
+    "prometheus-client>=0.19.0",
+    "python-dotenv>=1.0.0",
+    "structlog>=24.1.0",
+    "PyYAML>=6.0.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.5",
+    "pytest-cov>=4.1.0",
+    "respx>=0.20.2",
+    "ruff>=0.2.1",
+]
+
+[project.scripts]
+poly-bot = "polymarket_bot.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["polymarket_bot"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

@@ -1,0 +1,21 @@
+wallets:
+  - address: "0xd218e474776403a330142299f7796e8ba32eb5c9"
+    name: "Hype whale 1"
+    size_multiplier: 0.5
+    max_per_market_usdc: 1000.0
+    max_drawdown: 0.1 # 10%
+  - address: "0xee613b3fc183ee44f9da9c05f53e2da107e3debf"
+    name: "Hype whale 2"
+    size_multiplier: 0.5
+    max_per_market_usdc: 1000.0
+    max_drawdown: 0.1
+  - address: "0x799f927e192f153a5c2d3a3f5a2a2f6b8f3a3f3a"
+    name: "Leaderboard Account"
+    size_multiplier: 0.2
+    max_per_market_usdc: 500.0
+    max_drawdown: 0.05
+
+global_defaults:
+  size_multiplier: 0.25
+  max_per_market_usdc: 200.0
+  max_capital_usdc: 1000.0
