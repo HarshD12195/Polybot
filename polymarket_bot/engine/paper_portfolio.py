@@ -11,6 +11,7 @@ logger = structlog.get_logger(__name__)
 class Position:
     market_id: str
     clob_token_id: str
+    target_wallet: str # Track which wallet this copied from
     quantity: float
     avg_price: float
     mark_price: float = 0.0
@@ -23,6 +24,8 @@ class PaperPortfolio:
         self.max_equity = initial_capital
         self.max_drawdown_usd = 0.0 # Spec requirement
         self.positions: Dict[str, Position] = {} # clob_token_id -> Position
+        from polymarket_bot.engine.wallet_stats import WalletStatsManager
+        self.wallet_stats = WalletStatsManager()
         self.trade_history: List[Dict[str, Any]] = []
         self.realized_pnl = 0.0
         self.unrealized_pnl = 0.0
@@ -56,7 +59,12 @@ class PaperPortfolio:
         side = fill_data["side"].upper()
         size = float(fill_data["filled_size"])
         price = float(fill_data["fill_price"])
-        cost = size * price
+        wallet = fill_data.get("target_wallet", "unknown").lower()
+        notional = size * price
+        
+        from polymarket_bot.config import settings
+        fee = notional * settings.TRADING_FEE_PCT
+        cost = notional + fee if side == "BUY" else notional - fee # BUY pays fee, SELL receives notional minus fee
 
         if side == "BUY":
             # Guard: No negative cash
@@ -71,6 +79,7 @@ class PaperPortfolio:
                     cover_size = min(abs(pos.quantity), size)
                     profit = (pos.avg_price - price) * cover_size
                     self.realized_pnl += profit
+                    self.wallet_stats.record_trade(wallet, profit)
                 
                 new_size = pos.quantity + size
                 if abs(new_size) < 1e-9:
@@ -85,6 +94,7 @@ class PaperPortfolio:
                 self.positions[token_id] = Position(
                     market_id=fill_data.get("market_id", "unknown"),
                     clob_token_id=token_id,
+                    target_wallet=wallet,
                     quantity=size,
                     avg_price=price,
                     mark_price=price
@@ -99,6 +109,7 @@ class PaperPortfolio:
                     sell_size = min(pos.quantity, size)
                     profit = (price - pos.avg_price) * sell_size
                     self.realized_pnl += profit
+                    self.wallet_stats.record_trade(wallet, profit)
                 
                 new_size = pos.quantity - size
                 if abs(new_size) < 1e-9:
@@ -113,11 +124,12 @@ class PaperPortfolio:
                 self.positions[token_id] = Position(
                     market_id=fill_data.get("market_id", "unknown"),
                     clob_token_id=token_id,
+                    target_wallet=wallet,
                     quantity=-size,
                     avg_price=price,
                     mark_price=price
                 )
-            self.cash_usd += cost
+            self.cash_usd += (notional - fee)
 
         # Maintain spec-required fields and audit
         self.portfolio_value() # recomputes equity_usd
@@ -135,6 +147,31 @@ class PaperPortfolio:
         self.unrealized_pnl = sum(p.unrealized_pnl for p in self.positions.values())
         self.portfolio_value()
         self._assert_integrity()
+
+    def settle_position(self, token_id: str, final_price: float):
+        """
+        Settle a position when the market resolves.
+        final_price is usually 1.0 or 0.0 for binary markets.
+        """
+        if token_id not in self.positions:
+            return
+
+        pos = self.positions[token_id]
+        # Realize PnL: (final_price - entry_price) * quantity
+        profit = (final_price - pos.avg_price) * pos.quantity
+        self.realized_pnl += profit
+        self.wallet_stats.record_trade(pos.target_wallet, profit)
+        
+        # Update cash with the resulting value of the position
+        # If long 100 shares @ 0.5 (cost 50), and resolves at 1.0, we get 100 cash.
+        # My apply_fill already subtracted cost from cash.
+        # So here we add (quantity * final_price) to cash.
+        self.cash_usd += pos.quantity * final_price
+        
+        del self.positions[token_id]
+        self.portfolio_value()
+        self._assert_integrity()
+        logger.info("position_settled", token_id=token_id, final_price=final_price, pnl=profit)
 
     def portfolio_value(self) -> float:
         """

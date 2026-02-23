@@ -120,7 +120,8 @@ class PaperLiveRunner:
         # Start tasks
         tasks = [
             asyncio.create_task(watcher.start()),
-            asyncio.create_task(self._monitor_loop())
+            asyncio.create_task(self._monitor_loop()),
+            asyncio.create_task(self._resolution_loop())
         ]
 
         try:
@@ -146,9 +147,12 @@ class PaperLiveRunner:
                                 target_equity = await data_client.get_portfolio_value(target_wallet)
                                 my_equity = self.portfolio.equity_usd
                                 
+                                ui_summary = self.portfolio.get_summary()
                                 event.update({
                                     "target_portfolio_value": target_equity,
-                                    "my_portfolio_value": my_equity
+                                    "my_portfolio_value": my_equity,
+                                    "current_drawdown_pct": ui_summary["drawdown"],
+                                    "available_cash": self.portfolio.cash_usd
                                 })
                                 
                                 await engine.process_event(event)
@@ -242,6 +246,28 @@ class PaperLiveRunner:
 
             print(f"[{datetime.now().strftime('%H:%M:%S')}] Val: ${summary['total_value']:.2f} | Cash: ${summary['cash']:.2f} | PnL: ${summary['realized_pnl'] + summary['unrealized_pnl']:.2f} ({summary['roi']*100:.2f}%) | Pos: {summary['num_positions']}")
             await asyncio.sleep(10) # Log every 10s
+
+    async def _resolution_loop(self):
+        """Periodically checks if markets for open positions have resolved"""
+        from polymarket_bot.clients.gamma_client import GammaClient
+        gamma = GammaClient()
+        
+        while True:
+            positions = list(self.portfolio.positions.values())
+            for pos in positions:
+                try:
+                    market = await gamma.get_market(pos.market_id)
+                    # For binary markets, checking if closed is an indicator.
+                    # In a production bot, we'd check for specific resolution values (Outcome 0 vs 1)
+                    if market and market.get("closed"):
+                        logger.info("detected_closed_market", market_id=pos.market_id, token_id=pos.clob_token_id)
+                        # We'll assume a dummy final price for now as mapping is complex
+                        # In reality, we'd fetch the final price for that specific token_id
+                        # self.portfolio.settle_position(pos.clob_token_id, final_price)
+                except Exception as e:
+                    logger.error("resolution_check_error", token_id=pos.clob_token_id, error=str(e))
+            
+            await asyncio.sleep(600) # Check every 10 mins
 
 if __name__ == "__main__":
     runner = PaperLiveRunner(settings.INITIAL_CAPITAL_USD, settings.PAPER_LOG_DIR)

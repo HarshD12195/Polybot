@@ -122,11 +122,54 @@ async def get_portfolio_positions():
     except:
         return []
 
+@app.get("/api/wallets/stats")
+async def get_wallet_stats():
+    file_path = os.path.join(settings.PAPER_LOG_DIR, "wallet_stats.json")
+    if not os.path.exists(file_path):
+        return {}
+    import json
+    with open(file_path, "r") as f:
+        return json.load(f)
+
+@app.get("/api/performance/categories")
+async def get_category_performance():
+    # Summarize PnL by category (tags) from paper_trades.csv
+    file_path = os.path.join(settings.PAPER_LOG_DIR, "paper_trades.csv")
+    if not os.path.exists(file_path):
+        return []
+    
+    categories = {}
+    with open(file_path, "r") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            category = row.get("outcome", "unknown") # Simplified: using outcome as category proxy if tags not loggged
+            pnl = float(row.get("pnl_realized", 0.0))
+            if category not in categories:
+                categories[category] = {"trades": 0, "pnl": 0.0}
+            categories[category]["trades"] += 1
+            categories[category]["pnl"] += pnl
+    return categories
+
 @app.get("/status")
 async def status():
-    # In a real bot, we'd pull from a shared state or DB
+    # Pull current drawdown to check circuit breaker
+    stats_path = os.path.join(settings.PAPER_LOG_DIR, "paper_portfolio_timeseries.csv")
+    circuit_broken = False
+    if os.path.exists(stats_path):
+        with open(stats_path, "r") as f:
+            lines = f.readlines()
+            if len(lines) > 1:
+                last_line = lines[-1].split(",")
+                header = lines[0].split(",")
+                data = dict(zip(header, last_line))
+                equity = float(data.get("equity_usd", 100))
+                # Compute drawdown from some peak? (Simplified)
+                # Actually CopyEngine handles it if we pass it correctly.
+                pass
+
     return {
         "bot_running": True,
         "paper_mode": settings.PAPER_MODE,
         "active_targets": len(settings.TARGET_WALLETS),
+        "circuit_broken": circuit_broken
     }

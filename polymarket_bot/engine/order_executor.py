@@ -84,28 +84,43 @@ class PaperOrderExecutor:
         
         logger.info("paper_execution_attempt", side=side, price=limit_price, size=requested_size)
 
-        # 1. Fetch current orderbook (ASSERT exists)
+        # 1. Simulate execution delay
+        if settings.EXECUTION_DELAY_SECONDS > 0:
+            await asyncio.sleep(settings.EXECUTION_DELAY_SECONDS)
+
+        # 2. Fetch current orderbook
         orderbook = await self.clob_client.get_orderbook(token_id)
         
         fill_price = limit_price
         filled_size = requested_size
         spread_bps = 0.0
+        slippage_applied = 0.0
 
         if not orderbook.get("asks") or not orderbook.get("bids"):
             logger.info("paper_order_fallback_fill", reason="Missing orderbook, using limit_price")
-            notbook_missing = True
+            # Apply fixed slippage in paper mode when book is missing
+            if side == "BUY":
+                fill_price = limit_price * (1 + (settings.SLIPPAGE_BPS / 10000))
+            else:
+                fill_price = limit_price * (1 - (settings.SLIPPAGE_BPS / 10000))
+            slippage_applied = settings.SLIPPAGE_BPS
         else:
-            notbook_missing = False
-            # 2. Compute fill: BUY at min(limit, best_ask), SELL at max(limit, best_bid)
             best_ask = float(orderbook["asks"][0]["price"])
             best_bid = float(orderbook["bids"][0]["price"])
             
+            # More realistic fill: 
+            # BUY: Fill at best_ask or limit, whichever is worse for us? 
+            # Actually, BUY at best_ask if best_ask <= limit. 
+            # If best_ask > limit, we might not fill, but for copy-trading we usually ignore limit if we want to follow.
+            # We'll use the limit_price from the event but apply slippage.
+            
             if side == "BUY":
-                fill_price = min(limit_price, best_ask)
+                fill_price = max(limit_price, best_ask) * (1 + (settings.SLIPPAGE_BPS / 10000))
             else:
-                fill_price = max(limit_price, best_bid)
+                fill_price = min(limit_price, best_bid) * (1 - (settings.SLIPPAGE_BPS / 10000))
             
             spread_bps = (best_ask - best_bid) / best_bid * 10000
+            slippage_applied = settings.SLIPPAGE_BPS
 
         # 3. Apply to portfolio
         fill_event = {
@@ -113,6 +128,7 @@ class PaperOrderExecutor:
             "filled_size": filled_size,
             "fill_price": fill_price,
             "spread_bps": spread_bps,
+            "slippage_bps": slippage_applied,
             "ts": datetime.now()
         }
         
@@ -120,12 +136,9 @@ class PaperOrderExecutor:
         if self.portfolio:
             equity_before = self.portfolio.equity_usd
             self.portfolio.apply_fill(fill_event)
-            # 4. Recalculate portfolio via mark_to_market only if we have Mid Price
-            if notbook_missing:
-                # No book, no MTM update for THIS token yet
-                pass
-            else:
-                await self.sync_portfolio_mark_to_market(token_id, best_ask, best_bid)
+            # 4. Recalculate portfolio via mark_to_market
+            if orderbook.get("asks") and orderbook.get("bids"):
+                await self.sync_portfolio_mark_to_market(token_id, float(orderbook["asks"][0]["price"]), float(orderbook["bids"][0]["price"]))
 
         # 5. Enrich request for logging
         req.update({

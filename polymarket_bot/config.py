@@ -62,6 +62,16 @@ class Settings(BaseSettings):
     INITIAL_CAPITAL_USD: float = 100.0
     PAPER_LOG_DIR: str = "./paper_logs"
     MAX_RISK_PER_TRADE_PCT: float = 5.0
+    GLOBAL_MAX_DRAWDOWN_PCT: float = 0.20 # 20%
+    
+    # --- Wallet Quality Thresholds ---
+    MIN_WALLET_WIN_RATE: float = 0.40
+    MIN_WALLET_TRADES: int = 5
+    
+    # --- Paper Trading Realism ---
+    TRADING_FEE_PCT: float = 0.001  # 0.1% fee
+    EXECUTION_DELAY_SECONDS: float = 0.5
+    SLIPPAGE_BPS: int = 5
     
     LOG_LEVEL: str = "INFO"
     DATABASE_URL: str = "sqlite+aiosqlite:///./polybot_live.db"
@@ -95,7 +105,8 @@ class Settings(BaseSettings):
         global_defaults = {
             "size_multiplier": self.SIZE_MULTIPLIER_CONFIG.get("default", 0.25),
             "max_per_market_usdc": self.MAX_PER_MARKET_USDC,
-            "max_drawdown": 1.0 # Default: no limit
+            "max_drawdown": self.GLOBAL_MAX_DRAWDOWN_PCT,
+            "category_preferences": []
         }
 
         if os.path.exists(config_path):
@@ -104,9 +115,12 @@ class Settings(BaseSettings):
                     data = yaml.safe_load(f)
                     wallets_list = data.get("wallets", [])
                     wallets_config = {w["address"].lower(): w for w in wallets_list}
-                    global_defaults.update(data.get("global_defaults", {}))
-            except Exception:
-                pass
+                    # Update global defaults from YAML if present
+                    if "global_defaults" in data:
+                        global_defaults.update(data["global_defaults"])
+            except Exception as e:
+                import structlog
+                structlog.get_logger(__name__).error("failed_to_load_wallets_yaml", error=str(e))
 
         wallet_data = wallets_config.get(wallet.lower(), {})
         # Merge wallet-specific config into defaults
